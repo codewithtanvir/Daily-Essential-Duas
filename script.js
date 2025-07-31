@@ -10,8 +10,8 @@ document.head.appendChild(link);
 const swCode = `
     const CACHE_NAME = 'daily-duas-cache-v3-bw';
     const urlsToCache = ['/', 'index.html', 'style.css', 'script.js', 'duas.json', 'https://cdn.tailwindcss.com', 'https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=Noto+Naskh+Arabic:wght@400;500;600;700&family=Hind+Siliguri:wght@400;500;600;700&display=swap'];
-    self.addEventListener('install', e => e.waitUntil(caches.open(CACHE_NAME).then(c => c.addAll(urlsToCache)));
-    self.addEventListener('fetch', e => e.respondWith(caches.match(e.request).then(r => r || fetch(e.request)));
+    self.addEventListener('install', e => e.waitUntil(caches.open(CACHE_NAME).then(c => c.addAll(urlsToCache))));
+    self.addEventListener('fetch', e => e.respondWith(caches.match(e.request).then(r => r || fetch(e.request))));
     self.addEventListener('activate', e => { const c=[CACHE_NAME]; e.waitUntil(caches.keys().then(n => Promise.all(n.map(k => c.indexOf(k)===-1?caches.delete(k):null)))) });
 `;
 if ('serviceWorker' in navigator) {
@@ -113,39 +113,18 @@ getDuaBtn.addEventListener('click', async () => {
     geminiResultContainer.classList.add('hidden');
     getDuaBtn.disabled = true;
 
-    const apiKey = "AIzaSyCyanEOeTKAQAZqGBjchstgP5p9Q73eZVg"; // Provided by environment
-    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
-    
-    const prompt = `Based on the situation: "${situation}", provide a relevant Islamic dua.
-    Your response MUST be a single JSON object with five keys: "arabic", "transliteration", "english_translation", "bengali_translation", and "reference".
-    The reference should be from a valid Islamic source (e.g., Quran, Bukhari, Muslim, Tirmidhi, Abu Dawud).`;
-
-    const payload = {
-        contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: {
-            responseMimeType: "application/json",
-            responseSchema: {
-                type: "OBJECT",
-                properties: {
-                    "arabic": { "type": "STRING" },
-                    "transliteration": { "type": "STRING" },
-                    "english_translation": { "type": "STRING" },
-                    "bengali_translation": { "type": "STRING" },
-                    "reference": { "type": "STRING" }
-                },
-                required: ["arabic", "transliteration", "english_translation", "bengali_translation", "reference"]
-            }
-        }
-    };
-    
     try {
-        const response = await fetch(apiUrl, {
+        const response = await fetch('/api/get-dua', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ situation })
         });
 
-        if (!response.ok) throw new Error(`API Error: ${response.status}`);
+        if (!response.ok) {
+            throw new Error(`API Error: ${response.status}`);
+        }
 
         const result = await response.json();
         const duaData = JSON.parse(result.candidates[0].content.parts[0].text);
@@ -161,7 +140,7 @@ getDuaBtn.addEventListener('click', async () => {
         geminiResultContainer.classList.remove('hidden');
 
     } catch (error) {
-        console.error("Error fetching from Gemini API:", error);
+        console.error("Error fetching from backend:", error);
         showMessage(langData[currentLang].error_message, true);
     } finally {
         geminiLoader.classList.add('hidden');
